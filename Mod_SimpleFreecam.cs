@@ -4,7 +4,7 @@ using MelonLoader;
 using UnityEngine;
 using UnityEngine.Rendering.PostProcessing;
 
-[assembly: MelonInfo(typeof(BPMod_SimpleFreecam.Mod_SimpleFreecam), "BPMod_SimpleFreecam", "2.0.0", "Borealum", null)]
+[assembly: MelonInfo(typeof(BPMod_SimpleFreecam.Mod_SimpleFreecam), "BPMod_SimpleFreecam", "2.0.5", "Borealum", null)]
 [assembly: MelonGame("Dogubomb", "BLUE PRINCE")]
 
 namespace BPMod_SimpleFreecam
@@ -62,6 +62,9 @@ namespace BPMod_SimpleFreecam
         private GameObject antechamberGO;
         private List<GameObject> roomsList = new List<GameObject>();
         private bool showInfo = false;
+        private float invisibleOffset = 0.0001f;//fake "0" clip plane distance offset
+        private float fakeNearClip = 0;
+        private float fakeOrthoSize = 5;
 
         public override void OnInitializeMelon()
         {
@@ -271,7 +274,6 @@ namespace BPMod_SimpleFreecam
                 freecam_camera.transform.position = pos;
                 freecam_camera.transform.rotation = rot;
                 freecam_camera.orthographic = true;
-                freecam_camera.orthographicSize = 5;
             }
             return freecam_camera;
         }
@@ -440,11 +442,12 @@ namespace BPMod_SimpleFreecam
                     movSpecial = 1f;
                 if (Input.GetKeyDown(KeyCode.G) || Input.GetKeyDown(KeyCode.End))
                     movSpecial = -1f;
-                activeFreecam.nearClipPlane += movSpecial * freecamStep2.Value * speedMult;
+                fakeNearClip += movSpecial * freecamStep2.Value * speedMult;
+                fakeNearClip = Math.Max(fakeNearClip, 0);
+                activeFreecam.nearClipPlane = fakeNearClip + invisibleOffset;
             }
             else if(activeFreecamType == ActiveFreecamType.TOP_DOWN_ORTHOGRAPHIC)
             {
-                
                 if (Input.GetKeyDown(KeyCode.LeftArrow) || Input.GetKeyDown(KeyCode.A))
                     movRight = -1f;
                 if (Input.GetKeyDown(KeyCode.RightArrow) || Input.GetKeyDown(KeyCode.D))
@@ -465,7 +468,9 @@ namespace BPMod_SimpleFreecam
                     movSpecial = -1f;
                 if (Input.GetKeyDown(KeyCode.G) || Input.GetKeyDown(KeyCode.End))
                     movSpecial = 1f;
-                activeFreecam.orthographicSize += movSpecial * freecamStep2.Value * speedMult;
+                fakeOrthoSize += movSpecial * freecamStep2.Value * speedMult;
+                fakeOrthoSize = Math.Max(fakeOrthoSize, 0);
+                activeFreecam.orthographicSize = fakeOrthoSize;
             }
         }
 
@@ -491,12 +496,12 @@ namespace BPMod_SimpleFreecam
             else if (activeFreecamType == ActiveFreecamType.TOP_DOWN_PERSPECTIVE)
             {
                 type = "Perspective";
-                lineSpecial = $"Near clip: {activeFreecam.nearClipPlane:F3}";
+                lineSpecial = $"Near clip: {fakeNearClip:F3}";
             }
             else if (activeFreecamType == ActiveFreecamType.TOP_DOWN_ORTHOGRAPHIC)
             {
                 type = "Orthographic"; 
-                lineSpecial = $"Size: {activeFreecam.orthographicSize:F3}";
+                lineSpecial = $"Size: {fakeOrthoSize:F3}";
             }
             GUILayout.Label($"Type: {type}");
             if (activeFreecam != null)
