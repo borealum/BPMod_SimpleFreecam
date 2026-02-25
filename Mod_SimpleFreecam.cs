@@ -4,7 +4,7 @@ using MelonLoader;
 using UnityEngine;
 using UnityEngine.Rendering.PostProcessing;
 
-[assembly: MelonInfo(typeof(BPMod_SimpleFreecam.Mod_SimpleFreecam), "BPMod_SimpleFreecam", "2.0.5", "Borealum", null)]
+[assembly: MelonInfo(typeof(BPMod_SimpleFreecam.Mod_SimpleFreecam), "BPMod_SimpleFreecam", "2.1.0", "Borealum", null)]
 [assembly: MelonGame("Dogubomb", "BLUE PRINCE")]
 
 namespace BPMod_SimpleFreecam
@@ -60,6 +60,9 @@ namespace BPMod_SimpleFreecam
         private GameObject roomsGO;
         private GameObject entranceGO;
         private GameObject antechamberGO;
+        private GameObject pickupsGO;
+        private GameObject otherPrefabsGO;
+
         private List<GameObject> roomsList = new List<GameObject>();
         private bool showInfo = false;
         private float invisibleOffset = 0.0001f;//fake "0" clip plane distance offset
@@ -99,6 +102,10 @@ namespace BPMod_SimpleFreecam
             LoggerInstance.Msg($"{freecamStep2ID} value = {freecamStep2.Value}");
             freecamSpeedMult = MelonPreferences.CreateEntry<float>(categoryID, freecamSpeedMultID, 5.0f, freecamSpeedMultID, "Freecam speed multiplier when holding shift. Default value = 5.0");
             LoggerInstance.Msg($"{freecamSpeedMultID} value = {freecamSpeedMult.Value}");
+
+            step0Input = freecamStep0.Value.ToString("0.###");
+            step1Input = freecamStep1.Value.ToString("0.###");
+            step2Input = freecamStep2.Value.ToString("0.###");
         }
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
@@ -110,6 +117,8 @@ namespace BPMod_SimpleFreecam
                 roomsGO = GameObject.Find("__SYSTEM/Room Spawn Pools");
                 entranceGO = GameObject.Find("ROOMS/Entrance Hall");
                 antechamberGO = GameObject.Find("ROOMS/Antechamber");
+                pickupsGO = GameObject.Find("__SYSTEM/Pickup Spawn Pools");
+                otherPrefabsGO = GameObject.Find("__SYSTEM/OtherPrefab Spawn Pools");
                 showInfo = false;
             }
             roomsList.Clear();
@@ -323,52 +332,11 @@ namespace BPMod_SimpleFreecam
             }
             if (Input.GetKeyDown(doorsKey.Value))
             {
-                GameObject gmply = FindClosestWithName("_GAMEPLAY");
-                GameObject doors = null;
-                for (int i = 0; i < gmply.transform.childCount; i++)
-                {
-                    Transform child = gmply.transform.GetChild(i);
-                    if (child.name == "_DOORS")
-                    {
-                        doors = child.gameObject;
-                        break;
-                    }
-                }
-                doors?.SetActive(!doors.active);
+                toggleDoors();
             }
             if (Input.GetKeyDown(roomsKey.Value))
             {
-                if (roomsGO != null)//to make sure we are in the right scene
-                {
-                    if (roomsList.Count!=0)//turn on last turned off rooms
-                    {
-                        foreach (GameObject go in roomsList)
-                        {
-                            go.SetActive(true);
-                        }
-                        roomsList.Clear();
-                    }
-                    else
-                    {
-                        GameObject currRoom = FindClosestWithName("_GAMEPLAY").transform.GetParent().gameObject;
-                        for (int i = 0; i < roomsGO.transform.childCount; i++)
-                        {
-                            GameObject childObject = roomsGO.transform.GetChild(i).gameObject;
-                            if (childObject != currRoom)
-                            {
-                                roomsList.Add(childObject);
-                            }
-                        }
-                        if(currRoom != entranceGO)
-                            roomsList.Add(entranceGO);
-                        if (currRoom != antechamberGO)
-                            roomsList.Add(antechamberGO);
-                        foreach (GameObject go in roomsList)
-                        {
-                            go.SetActive(false);
-                        }
-                    }
-                }
+                toggleRooms();
             }
             if (Input.GetKeyDown(resetKey.Value))
             {
@@ -474,11 +442,89 @@ namespace BPMod_SimpleFreecam
             }
         }
 
-        private Rect windowRect = new Rect(20, Screen.height - 200, 250, 150);
+        private void toggleDoors()
+        {
+            GameObject gmply = FindClosestWithName("_GAMEPLAY");
+            GameObject doors = null;
+            for (int i = 0; i < gmply.transform.childCount; i++)
+            {
+                Transform child = gmply.transform.GetChild(i);
+                if (child.name == "_DOORS")
+                {
+                    doors = child.gameObject;
+                    break;
+                }
+            }
+            doors?.SetActive(!doors.active);
+        }
+
+        private void toggleRooms()
+        {
+            if (roomsGO != null)//to make sure we are in the right scene
+            {
+                if (roomsList.Count != 0)//turn on last turned off rooms
+                {
+                    foreach (GameObject go in roomsList)
+                    {
+                        go.SetActive(true);
+                    }
+                    roomsList.Clear();
+                }
+                else
+                {
+                    GameObject currRoom = FindClosestWithName("_GAMEPLAY").transform.GetParent().gameObject;
+                    for (int i = 0; i < roomsGO.transform.childCount; i++)
+                    {
+                        GameObject childObject = roomsGO.transform.GetChild(i).gameObject;
+                        if (childObject != currRoom)
+                        {
+                            roomsList.Add(childObject);
+                        }
+                    }
+                    if (currRoom != entranceGO)
+                        roomsList.Add(entranceGO);
+                    if (currRoom != antechamberGO)
+                        roomsList.Add(antechamberGO);
+                    foreach (GameObject go in roomsList)
+                    {
+                        go.SetActive(false);
+                    }
+                }
+            }
+        }
+
+        private GUIStyle bigLabel;
+        private GUIStyle bigToggle;
+        private GUIStyle bigButton;
+        private GUIStyle bigInput;
+
+        private Rect windowRect = new Rect(20, Screen.height - 500, 250, 400);
+        private bool pickupsCheckbox = true;
+        private bool deadEndsCheckbox = true;
+        private string step0Input;
+        private string step1Input;
+        private string step2Input;
+
+        private void createStyles()
+        {
+            bigLabel = new GUIStyle(GUI.skin.label);
+            bigLabel.fontSize = 15;
+            bigToggle = new GUIStyle(GUI.skin.toggle);
+            bigToggle.fontSize = 15;
+            bigButton = new GUIStyle(GUI.skin.button);
+            bigButton.fontSize = 15;
+            bigInput = new GUIStyle(GUI.skin.textField);
+            bigInput.fontSize = 15;
+        }
+
         public override void OnGUI()
         {
             if (!showInfo) return;
-            windowRect = GUI.Window(0, windowRect, (GUI.WindowFunction)DrawWindow, "Freecam info");
+            if (bigLabel == null)
+            {
+                createStyles();
+            }
+            windowRect = GUI.Window(0, windowRect, (GUI.WindowFunction)DrawWindow, "Camera panel");
         }
 
         private void DrawWindow(int windowID)
@@ -500,18 +546,81 @@ namespace BPMod_SimpleFreecam
             }
             else if (activeFreecamType == ActiveFreecamType.TOP_DOWN_ORTHOGRAPHIC)
             {
-                type = "Orthographic"; 
+                type = "Orthographic";
                 lineSpecial = $"Size: {fakeOrthoSize:F3}";
             }
-            GUILayout.Label($"Type: {type}");
+            GUILayout.Label($"Type: {type}", bigLabel);
             if (activeFreecam != null)
             {
                 Vector3 p = activeFreecam.transform.position;
                 Vector3 q = activeFreecam.transform.eulerAngles;
-                GUILayout.Label($"Pos: {p.x:F3}, {p.y:F3}, {p.z:F3}");
-                GUILayout.Label($"Rot: {q.x:F3}, {q.y:F3}, {q.z:F3}");
+                GUILayout.Label($"Pos: {p.x:F3}, {p.y:F3}, {p.z:F3}", bigLabel);
+                GUILayout.Label($"Rot: {q.x:F3}, {q.y:F3}, {q.z:F3}", bigLabel);
             }
-            GUILayout.Label(lineSpecial);
+            GUILayout.Label(lineSpecial, bigLabel);
+            GUILayout.Label("----------", bigLabel);
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("wasd step:", bigLabel);
+            string newInput = GUILayout.TextField(step0Input, bigInput);
+            if (!newInput.Equals(step0Input))
+            {
+                step0Input = newInput;
+                if (float.TryParse(step0Input, out float parsed))
+                {
+                    freecamStep0.Value = parsed;
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("height step:", bigLabel);
+            newInput = GUILayout.TextField(step1Input, bigInput);
+            if (!newInput.Equals(step1Input))
+            {
+                step1Input = newInput;
+                if (float.TryParse(step1Input, out float parsed))
+                {
+                    freecamStep1.Value = parsed;
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("clip/size step:", bigLabel);
+            newInput = GUILayout.TextField(step2Input, bigInput);
+            if (!newInput.Equals(step2Input))
+            {
+                step2Input = newInput;
+                if (float.TryParse(step2Input, out float parsed))
+                {
+                    freecamStep2.Value = parsed;
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            if (GUILayout.Button("Doors", bigButton))
+            {
+                toggleDoors();
+            }
+            if (GUILayout.Button("Rooms", bigButton))
+            {
+                toggleRooms();
+            }
+
+            bool newValue = GUILayout.Toggle(pickupsCheckbox, "Pickups", bigToggle);
+            if (newValue != pickupsCheckbox)
+            {
+                pickupsCheckbox = newValue;
+                pickupsGO.active = pickupsCheckbox;
+            }
+            newValue = GUILayout.Toggle(deadEndsCheckbox, "Dead ends", bigToggle);
+            if (newValue != deadEndsCheckbox)
+            {
+                deadEndsCheckbox = newValue;
+                otherPrefabsGO.active = deadEndsCheckbox;
+            }
+
             GUI.DragWindow();
         }
     }
